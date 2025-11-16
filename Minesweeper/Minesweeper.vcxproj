@@ -134,6 +134,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="config.c" />
     <ClCompile Include="Grid.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="HowTo.c" />
@@ -143,6 +144,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="basics.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="Grid.h" />
     <ClInclude Include="HowTo.h" />
   </ItemGroup>

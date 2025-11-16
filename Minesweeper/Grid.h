@@ -4,6 +4,8 @@
 
 #include "basics.h"
 
+#include "config.h"
+
 /// <summary>
 /// This struct represent a single cell in the Minesweeper grid.
 /// All the properties related to a cell are defined here.
@@ -22,9 +24,10 @@ typedef struct Cell {
 /// It contains a 2D array of Cell pointers and a count of discovered cells.
 /// </summary>
 typedef struct Grid {
-	Cell* cells[GRID_SIZE][GRID_SIZE];
+	Cell*** cells;
 	int discoveredCellCount;
 	int bombCount;
+	int gridSize;
 } Grid;
 
 /// <summary>
@@ -77,7 +80,7 @@ Grid* GridCreate();
 /// <param name="bombCount">The number of bombs to be planted in the grid</param>
 /// <param name="cellToAvoid">The grid position to avoid planting a bomb in sfVector2i format ({ x, y })</param>
 void GridPlantBomb(Grid* grid, int bombCount, sfVector2i cellToAvoid);
-	
+
 
 
 /// <summary>
@@ -101,3 +104,7 @@ void GridDraw(Grid* grid, sfRenderWindow* window);
 /// </summary>
 /// <param name="grid">The grid to be destroyed</param>
 void GridDestroy(Grid* grid);
+
+int GetGridSize();
+int GetBombCount();
+float GetCellSize();

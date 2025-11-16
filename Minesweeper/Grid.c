@@ -21,11 +21,11 @@ static sfText* CreateText(const char* text, const char* fontFilePath, const int 
 	return newText;
 }
 static sfFont* globalFont = NULL;
-Cell* CellCreate(sfVector2f size, sfVector2f pos, sfColor color) 
+Cell* CellCreate(sfVector2f size, sfVector2f pos, sfColor color)
 {
 	// Initialize all cell properties
 	// ...
-	
+
 	Cell* newCell = (Cell*)malloc(sizeof(Cell));
 	if (newCell == NULL) {
 		return NULL;
@@ -157,7 +157,7 @@ int CellReveal(Grid* grid, sfVector2i cellGridPos)
 				int newX = cellGridPos.x + dx;
 				int newY = cellGridPos.y + dy;
 
-				if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
+				if (newX >= 0 && newX < GetGridSize() && newY >= 0 && newY < GetGridSize()) {
 					if (!(dx == 0 && dy == 0)) {
 						Cell* neighbor = grid->cells[newX][newY];
 						if (!neighbor->bDiscovered && !neighbor->bFlagged) {
@@ -172,10 +172,10 @@ int CellReveal(Grid* grid, sfVector2i cellGridPos)
 	grid->discoveredCellCount++;
 
 	// Vérification victoire...
-	int totalCells = GRID_SIZE * GRID_SIZE;
+	int totalCells = GetGridSize() * GetGridSize();
 	int bombCount = 0;
-	for (int i = 0; i < GRID_SIZE; i++) {
-		for (int j = 0; j < GRID_SIZE; j++) {
+	for (int i = 0; i < GetGridSize(); i++) {
+		for (int j = 0; j < GetGridSize(); j++) {
 			if (grid->cells[i][j]->bPlanted) bombCount++;
 		}
 	}
@@ -186,28 +186,28 @@ int CellReveal(Grid* grid, sfVector2i cellGridPos)
 
 	return 0;
 }
-	// If the cell is already discovered or flagged, do nothing and return 0
-	// ...
-	
-	// If the cell is planted with a bomb, return FAILURE to indicate game over
-	// ...
-	
-	
-	// Change the cell's appearance to revealed (lighter color) and mark it as discovered
-	// ...
+// If the cell is already discovered or flagged, do nothing and return 0
+// ...
 
-	// If the cell has explosive neighbors, display the number
-	// ...
+// If the cell is planted with a bomb, return FAILURE to indicate game over
+// ...
 
-	// If the cell is completely empty (explosiveNeighbor == 0), start the "flood fill" (reveal neighbors) algorithm
-	// ...
-	
 
-	// Increase grid discovered cell count and If all none planted cells are discovered, terminate the game (return SUCCESS)
-	// ...
+// Change the cell's appearance to revealed (lighter color) and mark it as discovered
+// ...
 
-	// Return 0 as the cell was revealed and was not a bomb
-	
+// If the cell has explosive neighbors, display the number
+// ...
+
+// If the cell is completely empty (explosiveNeighbor == 0), start the "flood fill" (reveal neighbors) algorithm
+// ...
+
+
+// Increase grid discovered cell count and If all none planted cells are discovered, terminate the game (return SUCCESS)
+// ...
+
+// Return 0 as the cell was revealed and was not a bomb
+
 
 
 void CellFlag(Grid* grid, sfVector2i cellGridPos)
@@ -219,7 +219,7 @@ void CellFlag(Grid* grid, sfVector2i cellGridPos)
 
 	// Toggle the flagged state of the cell and update its appearance accordingly
 	// ...
-	
+
 	if (cell->bDiscovered) return;
 
 	cell->bFlagged = !cell->bFlagged;
@@ -239,7 +239,7 @@ void CellDestroy(Cell* cell)
 {
 	// Free all resources associated with the cell
 	// ...
-	
+
 	if (cell->shape != NULL) {
 		sfRectangleShape_destroy(cell->shape);
 		cell->shape = NULL;
@@ -258,33 +258,40 @@ void CellDestroy(Cell* cell)
 
 Grid* GridCreate()
 {
-	// Initialize grid properties, create all cell and register them in grid array
-	// ...
-	
-	
-
 	Grid* newGrid = (Grid*)malloc(sizeof(Grid));
 	if (!newGrid) return NULL;
 
+	int gridSize = GetGridSize();
+	float cellSize = GetCellSize();
+
+	newGrid->gridSize = gridSize;
 	newGrid->discoveredCellCount = 0;
 
-	for (int x = 0; x < GRID_SIZE; x++) {
-		for (int y = 0; y < GRID_SIZE; y++) {
-			sfVector2f cellSize = { 30.0f, 30.0f };
-			sfVector2f cellPos = { x * 30.0f, y * 30.0f };
-			sfColor cellColor = sfColor_fromRGB(120, 120, 120); // Plus foncé
+	// Allouer le tableau 2D dynamique
+	newGrid->cells = (Cell***)malloc(gridSize * sizeof(Cell**));
+	for (int x = 0; x < gridSize; x++) {
+		newGrid->cells[x] = (Cell**)malloc(gridSize * sizeof(Cell*));
+		for (int y = 0; y < gridSize; y++) {
+			sfVector2f cellPos = {
+				GRID_OFFSET + x * cellSize,
+				GRID_OFFSET + y * cellSize
+			};
+			sfVector2f cellSizeVec = { cellSize - CELL_OFFSET, cellSize - CELL_OFFSET };
+			sfColor cellColor = sfColor_fromRGB(150, 150, 150);
 
-			newGrid->cells[x][y] = CellCreate(cellSize, cellPos, cellColor);
+			newGrid->cells[x][y] = CellCreate(cellSizeVec, cellPos, cellColor);
 
-			// ASSOCIER LA POLICE AU TEXTE
-			if (globalFont != NULL) {
-				sfText_setFont(newGrid->cells[x][y]->text, globalFont);
+			if (!newGrid->cells[x][y]) {
+				printf("ERREUR: Creation cellule (%d,%d) echouee\n", x, y);
+				// Cleanup...
+				return NULL;
 			}
 		}
 	}
 
+	printf("Grille creee: %dx%d cellules\n", gridSize, gridSize);
 	return newGrid;
-	}
+}
 
 void GridPlantBomb(Grid* grid, int bombCount, sfVector2i cellToAvoid)
 {
@@ -293,11 +300,12 @@ void GridPlantBomb(Grid* grid, int bombCount, sfVector2i cellToAvoid)
 	// ...
 	int bombsPlanted = 0;
 	int attempts = 0;
-	int maxAttempts = GRID_SIZE * GRID_SIZE * 2; // Safety limit
+	int gridSize = GetGridSize();
+	int maxAttempts = gridSize * gridSize * 2;
 
 	while (bombsPlanted < bombCount && attempts < maxAttempts) {
-		int randomX = rand() % GRID_SIZE;
-		int randomY = rand() % GRID_SIZE;
+		int randomX = rand() % gridSize;
+		int randomY = rand() % gridSize;
 
 		if ((randomX != cellToAvoid.x || randomY != cellToAvoid.y) &&
 			!grid->cells[randomX][randomY]->bPlanted) {
@@ -305,14 +313,14 @@ void GridPlantBomb(Grid* grid, int bombCount, sfVector2i cellToAvoid)
 			grid->cells[randomX][randomY]->bPlanted = true;
 			bombsPlanted++;
 
-			// Update neighbors
+			// Mettre à jour les voisins
 			for (int dx = -1; dx <= 1; dx++) {
 				for (int dy = -1; dy <= 1; dy++) {
 					int neighborX = randomX + dx;
 					int neighborY = randomY + dy;
 
-					if (neighborX >= 0 && neighborX < GRID_SIZE &&
-						neighborY >= 0 && neighborY < GRID_SIZE) {
+					if (neighborX >= 0 && neighborX < gridSize &&
+						neighborY >= 0 && neighborY < gridSize) {
 						grid->cells[neighborX][neighborY]->explosiveNeighbor++;
 					}
 				}
@@ -328,7 +336,7 @@ void GridPlantBomb(Grid* grid, int bombCount, sfVector2i cellToAvoid)
 }
 
 
-sfVector2i GridUpdateLoop(Grid* grid, sfRenderWindow* window) 
+sfVector2i GridUpdateLoop(Grid* grid, sfRenderWindow* window)
 {
 	sfVector2i mousePos = sfMouse_getPositionRenderWindow(window);
 
@@ -339,8 +347,8 @@ sfVector2i GridUpdateLoop(Grid* grid, sfRenderWindow* window)
 	};
 
 	// Vérifier si les coordonnées sont dans la grille
-	if (cellCoord.x >= 0 && cellCoord.x < GRID_SIZE &&
-		cellCoord.y >= 0 && cellCoord.y < GRID_SIZE) {
+	if (cellCoord.x >= 0 && cellCoord.x < GetGridSize() &&
+		cellCoord.y >= 0 && cellCoord.y < GetGridSize()) {
 		return cellCoord;
 	}
 
@@ -355,8 +363,8 @@ void GridDraw(Grid* grid, sfRenderWindow* window)
 	// ...
 	{
 		// Loop through all cells of the grid and call CellDraw to display them
-		for (int x = 0; x < GRID_SIZE; x++) {
-			for (int y = 0; y < GRID_SIZE; y++) {
+		for (int x = 0; x < GetGridSize(); x++) {
+			for (int y = 0; y < GetGridSize(); y++) {
 				CellDraw(grid->cells[x][y], window);
 			}
 		}
@@ -365,21 +373,19 @@ void GridDraw(Grid* grid, sfRenderWindow* window)
 
 void GridDestroy(Grid* grid)
 {
-	// Free all resources associated with the grid and its cells
-	// ...
-	for (int x = 0; x < GRID_SIZE; x++) {
-		for (int y = 0; y < GRID_SIZE; y++) {
+	if (!grid) return;
+
+	int gridSize = grid->gridSize;
+
+	for (int x = 0; x < gridSize; x++) {
+		for (int y = 0; y < gridSize; y++) {
 			if (grid->cells[x][y] != NULL) {
 				CellDestroy(grid->cells[x][y]);
-				grid->cells[x][y] = NULL;
 			}
 		}
+		free(grid->cells[x]);  // Libérer chaque ligne
 	}
+	free(grid->cells);  // Libérer le tableau principal
 	free(grid);
-
-	// Libérer la police quand la dernière grille est détruite
-	if (globalFont != NULL) {
-		sfFont_destroy(globalFont);
-		globalFont = NULL;
-	}
 }
+

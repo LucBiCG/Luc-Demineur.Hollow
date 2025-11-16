@@ -3,14 +3,27 @@
 
 #include "basics.h"
 #include "Grid.h"
+#include "config.h"
+
 
 #define DEBUG_CLEAN false
 
 int main(void)
 {
+    
+    printf("Choisissez la difficulte:\n");
+    printf("0 - Facile (%dx%d, %d bombes)\n", EASY_GRID_SIZE, EASY_GRID_SIZE, EASY_BOMB_COUNT);
+    printf("1 - Moyen (%dx%d, %d bombes)\n", MEDIUM_GRID_SIZE, MEDIUM_GRID_SIZE, MEDIUM_BOMB_COUNT);
+    printf("2 - Difficile (%dx%d, %d bombes)\n", HARD_GRID_SIZE, HARD_GRID_SIZE, HARD_BOMB_COUNT);
+
+    int difficulty;
+    scanf_s("%d", &difficulty);
+    SetGameDifficulty(difficulty);
+     
+
     // Define the video mode and create the window
     sfVideoMode mode = { WIDTH, HEIGHT, 32 };
-    sfRenderWindow* window;
+    sfRenderWindow* window = sfRenderWindow_create(mode, "Minesweeper", sfClose, NULL);
     sfEvent event;
 
     /* Create the main window */
@@ -89,19 +102,28 @@ int main(void)
 
             if (event.type == sfEvtMouseButtonPressed && gameState == 0)
             {
-                if (event.mouseButton.button == sfMouseLeft)
-                {
-                    sfVector2i mousePos = { event.mouseButton.x, event.mouseButton.y };
-                    sfVector2i cellPos = { mousePos.x / 30, mousePos.y / 30 };
+                // CORRECTION ICI : Utiliser GetCellSize() et GetGridSize()
+                sfVector2i mousePos = { event.mouseButton.x, event.mouseButton.y };
+                float cellSize = GetCellSize();
+                int gridSize = GetGridSize();
 
-                    if (cellPos.x >= 0 && cellPos.x < GRID_SIZE &&
-                        cellPos.y >= 0 && cellPos.y < GRID_SIZE)
-                    {
-                        printf("Clic sur cellule (%d, %d)\n", cellPos.x, cellPos.y);
+                sfVector2i cellPos = {
+                    (int)((mousePos.x - GRID_OFFSET) / cellSize),
+                    (int)((mousePos.y - GRID_OFFSET) / cellSize)
+                };
+
+                printf("Clic en position: (%d, %d) -> Cellule: (%d, %d)\n",
+                    mousePos.x, mousePos.y, cellPos.x, cellPos.y);
+
+                if (cellPos.x >= 0 && cellPos.x < gridSize &&
+                    cellPos.y >= 0 && cellPos.y < gridSize)
+                {
+                    if (event.mouseButton.button == sfMouseLeft) {
+                        printf("Clic GAUCHE sur cellule (%d, %d)\n", cellPos.x, cellPos.y);
 
                         if (bFirstTouch) {
-                            printf("Plantation des bombes...\n");
-                            GridPlantBomb(grid, BOMB_COUNT, cellPos);
+                            printf("Plantation des %d bombes...\n", GetBombCount());
+                            GridPlantBomb(grid, GetBombCount(), cellPos);
                             bFirstTouch = false;
                         }
 
@@ -115,18 +137,13 @@ int main(void)
                             gameState = SUCCESS;
                         }
                     }
-                }
-                else if (event.mouseButton.button == sfMouseRight)
-                {
-                    sfVector2i mousePos = { event.mouseButton.x, event.mouseButton.y };
-                    sfVector2i cellPos = { mousePos.x / 30, mousePos.y / 30 };
-
-                    if (cellPos.x >= 0 && cellPos.x < GRID_SIZE &&
-                        cellPos.y >= 0 && cellPos.y < GRID_SIZE)
-                    {
-                        printf("Drapeau sur cellule (%d, %d)\n", cellPos.x, cellPos.y);
+                    else if (event.mouseButton.button == sfMouseRight) {
+                        printf("Clic DROIT sur cellule (%d, %d)\n", cellPos.x, cellPos.y);
                         CellFlag(grid, cellPos);
                     }
+                }
+                else {
+                    printf("Clic HORS GRILLE\n");
                 }
             }
         }
@@ -137,54 +154,11 @@ int main(void)
         // Draw the grid
         GridDraw(grid, window);
 
-        sfText* debugCell = sfText_create();/* Temporaire */
-        sfFont* debugFont = sfFont_createFromFile("C:/Windows/Fonts/tahoma.ttf");
-        if (debugFont) {
-            sfText_setFont(debugCell, debugFont);
-            sfText_setString(debugCell, "");
-            sfText_setCharacterSize(debugCell, 16);
-            sfText_setColor(debugCell, sfWhite);
-            sfText_setPosition(debugCell, (sfVector2f) { 200, 10 });
-            sfRenderWindow_drawText(window, debugCell, NULL);
-        }
-
-        sfText_destroy(debugCell);
-        if (debugFont) sfFont_destroy(debugFont);
-        // DEBUG: Afficher les textes de test
-        if (testFont1) {
-            sfText_setPosition(testText1, (sfVector2f) { 10, 10 });
-            sfText_setCharacterSize(testText1, 16);
-            sfText_setColor(testText1, sfGreen);
-            sfRenderWindow_drawText(window, testText1, NULL);
-        }
-
-        if (testFont2) {
-            sfText_setPosition(testText2, (sfVector2f) { 10, 40 });
-            sfText_setCharacterSize(testText2, 16);
-            sfText_setColor(testText2, sfYellow);
-            sfRenderWindow_drawText(window, testText2, NULL);
-        }
-
-        if (testFont3) {
-            sfText_setPosition(testText3, (sfVector2f) { 10, 70 });
-            sfText_setCharacterSize(testText3, 16);
-            sfText_setColor(testText3, sfCyan);
-            sfRenderWindow_drawText(window, testText3, NULL);
-        }
-
         /* Update the window */
         sfRenderWindow_display(window);
     }
 
     /* Cleanup resources */
-    // Libérer les ressources de test
-    if (testText1) sfText_destroy(testText1);
-    if (testFont1) sfFont_destroy(testFont1);
-    if (testText2) sfText_destroy(testText2);
-    if (testFont2) sfFont_destroy(testFont2);
-    if (testText3) sfText_destroy(testText3);
-    if (testFont3) sfFont_destroy(testFont3);
-
     GridDestroy(grid);
     sfRenderWindow_destroy(window);
 
